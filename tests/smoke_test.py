@@ -253,6 +253,24 @@ def run():
                 ops.add_modifier(kind=kind)
             assert len(ob.modifiers) >= len(MODIFIERS) - 3
 
+    @check("deformer objects: child drives parent, re-parenting moves the effect")
+    def _():
+        with view3d_override():
+            ops.add_primitive(kind='Cube')
+            a = track(bpy.context.active_object)
+            ops.add_deformer(kind='BEND')
+            bend = track(bpy.context.active_object)
+            assert bend.parent == a and a.modifiers.get("C4D " + bend.name) is not None
+            ops.add_primitive(kind='Cylinder')
+            b = track(bpy.context.active_object)
+        bend.parent = b
+        bpy.context.view_layer.update()
+        assert a.modifiers.get("C4D " + bend.name) is None, "old parent kept modifier"
+        assert b.modifiers.get("C4D " + bend.name) is not None, "new parent missing modifier"
+        bpy.data.objects.remove(bend)
+        bpy.context.view_layer.update()
+        assert not any(m.name.startswith("C4D Bend") for m in b.modifiers), "stale modifier after delete"
+
     @check("generator on/off toggle (Q)")
     def _():
         with view3d_override():

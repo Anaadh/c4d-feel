@@ -437,7 +437,9 @@ class C4D_PT_attributes(bpy.types.Panel):
 def _type_label(ob):
     from .primitives import primitive_name
     from .splines import kind_of
-    prim = primitive_name(ob) or (kind_of(ob) or (None, None))[1]
+    from .deformers import KINDS as DEFORMERS
+    prim = (primitive_name(ob) or (kind_of(ob) or (None, None))[1]
+            or (DEFORMERS[ob["c4d_deformer"]][0] if ob.get("c4d_deformer") in DEFORMERS else None))
     if prim:
         return prim
     return {'MESH': "Polygon", 'EMPTY': "Null", 'CURVE': "Spline", 'LIGHT': "Light",
@@ -478,6 +480,12 @@ def _draw_coord(col, ob):
 def _draw_object(col, context, ob):
     data = ob.data
     if ob.type == 'EMPTY':
+        from .deformers import deformer_modifier
+        dm = deformer_modifier(ob)
+        if dm is not None:
+            col.label(text=f"Deforming: {ob.parent.name}", icon='MOD_SIMPLEDEFORM')
+            _draw_modifier_props(col, dm)
+            return
         col.prop(ob, "empty_display_type", text="Display")
         col.prop(ob, "empty_display_size", text="Radius")
     elif ob.type == 'CAMERA':

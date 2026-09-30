@@ -180,9 +180,16 @@ class C4D_MT_deformers(bpy.types.Menu):
     bl_label = "Deformers"
 
     def draw(self, context):
+        from .deformers import KINDS
+        layout = self.layout
+        layout.label(text="Deformer objects (child of selection)")
+        for k, (label, _d, _m, _s) in KINDS.items():
+            layout.operator("c4d.add_deformer", text=label, icon='MOD_SIMPLEDEFORM').kind = k
+        layout.separator()
+        layout.label(text="As modifier on selection")
         for k in ('BEND', 'TWIST', 'TAPER', 'STRETCH', 'DISPLACE', 'WAVE', 'SMOOTH', 'SHRINKWRAP', 'LATTICE'):
             label, icon, _ = MODIFIERS[k]
-            self.layout.operator("c4d.add_modifier", text=label, icon=icon).kind = k
+            layout.operator("c4d.add_modifier", text=label, icon=icon).kind = k
 
 
 class C4D_MT_environment(bpy.types.Menu):

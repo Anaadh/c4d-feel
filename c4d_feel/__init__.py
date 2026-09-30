@@ -2,9 +2,9 @@
 
 import bpy
 
-from . import icons, coord, ops, chords, menus, menubar, cloner, primitives, splines, om, matmanager, theme, layout, ui, managers, keymap
+from . import icons, coord, ops, chords, menus, menubar, cloner, deformers, primitives, splines, om, matmanager, theme, layout, ui, managers, keymap
 
-_modules = (coord, ops, chords, menus, menubar, cloner, primitives, splines, om, matmanager, theme, layout, ui, managers)
+_modules = (coord, ops, chords, menus, menubar, cloner, deformers, primitives, splines, om, matmanager, theme, layout, ui, managers)
 
 
 def _toggle_keymap(self, _context):
@@ -44,6 +44,7 @@ def register():
     icons.register()
     coord.register()
     om.register()
+    deformers.register()
     ui.register()
     managers.register()
     p = prefs()
@@ -55,6 +56,7 @@ def unregister():
     keymap.unregister()
     managers.unregister()
     ui.unregister()
+    deformers.unregister()
     om.unregister()
     coord.unregister()
     icons.unregister()
