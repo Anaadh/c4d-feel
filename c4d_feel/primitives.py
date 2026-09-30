@@ -12,6 +12,7 @@ import math
 import bpy
 
 PREFIX = "C4D "
+VERSION = {"Cylinder": 2}  # bump when a node tree changes
 SMOOTH_ANGLE = math.radians(40.0)
 
 # name -> list of (socket name, socket type, default, min, subtype)
@@ -31,6 +32,7 @@ SPECS = {
         ("Height", 'NodeSocketFloat', 2.0, 0.0, 'DISTANCE'),
         ("Height Segments", 'NodeSocketInt', 4, 1, None),
         ("Rotation Segments", 'NodeSocketInt', 36, 3, None),
+        ("Caps", 'NodeSocketBool', True, None, None),
     ],
     "Cone": [
         ("Top Radius", 'NodeSocketFloat', 0.0, 0.0, 'DISTANCE'),
@@ -114,17 +116,33 @@ def _body(name, b):
         b.link(b.inp("Segments"), n.inputs["Segments"])
         b.link(b.mul(b.inp("Segments"), 0.5), n.inputs["Rings"])
         return n.outputs["Mesh"], n.outputs["UV Map"]
-    if name in {"Cylinder", "Cone"}:
-        kind = 'GeometryNodeMeshCylinder' if name == "Cylinder" else 'GeometryNodeMeshCone'
+    if name == "Cylinder":
+        # Caps on/off: fill type is a node setting, so switch between two cylinders.
+        outs = []
+        for fill in ('NGON', 'NONE'):
+            n = b.node('GeometryNodeMeshCylinder', fill_type=fill)
+            b.link(b.inp("Rotation Segments"), n.inputs["Vertices"])
+            b.link(b.inp("Height Segments"), n.inputs["Side Segments"])
+            b.link(b.inp("Height"), n.inputs["Depth"])
+            b.link(b.inp("Radius"), n.inputs["Radius"])
+            outs.append(n)
+        geo = b.node('GeometryNodeSwitch', input_type='GEOMETRY')
+        b.link(b.inp("Caps"), geo.inputs["Switch"])
+        b.link(outs[0].outputs["Mesh"], geo.inputs["True"])
+        b.link(outs[1].outputs["Mesh"], geo.inputs["False"])
+        uv = b.node('GeometryNodeSwitch', input_type='VECTOR')
+        b.link(b.inp("Caps"), uv.inputs["Switch"])
+        b.link(outs[0].outputs["UV Map"], uv.inputs["True"])
+        b.link(outs[1].outputs["UV Map"], uv.inputs["False"])
+        return geo.outputs[0], uv.outputs[0]
+    if name == "Cone":
+        kind = 'GeometryNodeMeshCone'
         n = b.node(kind)
         b.link(b.inp("Rotation Segments"), n.inputs["Vertices"])
         b.link(b.inp("Height Segments"), n.inputs["Side Segments"])
         b.link(b.inp("Height"), n.inputs["Depth"])
-        if name == "Cylinder":
-            b.link(b.inp("Radius"), n.inputs["Radius"])
-        else:
-            b.link(b.inp("Top Radius"), n.inputs["Radius Top"])
-            b.link(b.inp("Bottom Radius"), n.inputs["Radius Bottom"])
+        b.link(b.inp("Top Radius"), n.inputs["Radius Top"])
+        b.link(b.inp("Bottom Radius"), n.inputs["Radius Bottom"])
         return n.outputs["Mesh"], n.outputs["UV Map"]
     if name == "Plane":
         n = b.node('GeometryNodeMeshGrid')
@@ -160,10 +178,14 @@ def _body(name, b):
 
 def build_group(name):
     gname = PREFIX + name
-    ng = bpy.data.node_groups.get(gname)
-    if ng is not None:
-        return ng
+    want = VERSION.get(name, 1)
+    old = bpy.data.node_groups.get(gname)
+    if old is not None and old.get("c4d_version", 1) >= want:
+        return old
+    if old is not None:
+        old.name = gname + " (old)"
     ng = bpy.data.node_groups.new(gname, 'GeometryNodeTree')
+    ng["c4d_version"] = want
     it = ng.interface
     it.new_socket(name="Geometry", in_out='INPUT', socket_type='NodeSocketGeometry')
     it.new_socket(name="Geometry", in_out='OUTPUT', socket_type='NodeSocketGeometry')
@@ -201,6 +223,10 @@ def build_group(name):
 
     out = b.node('NodeGroupOutput')
     b.link(geo, out.inputs[0])
+    if old is not None:
+        # Existing objects switch to the new tree (new sockets appended at the end).
+        old.user_remap(ng)
+        bpy.data.node_groups.remove(old)
     return ng
 
 

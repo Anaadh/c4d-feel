@@ -175,7 +175,8 @@ def draw(layout, context):
         layout.label(text="No object selected")
         return
     grid = layout.grid_flow(row_major=True, columns=3, even_columns=True, align=False)
-    for title, prop in (("Position", "c4d_pos"), ("Size", "c4d_size"), ("Rotation", "c4d_rot")):
+    size_prop = "c4d_scale" if wm.c4d_coord_size == 'SCALE' and not _edit_selection(ob)[1] else "c4d_size"
+    for title, prop in (("Position", "c4d_pos"), ("Size", size_prop), ("Rotation", "c4d_rot")):
         col = grid.column(align=True)
         col.label(text=title)
         col.prop(wm, prop, text="")
@@ -211,6 +212,8 @@ def register():
         items=[('SIZE', "Size", "Bounding box size"), ('SCALE', "Scale", "Scale factors")])
     WM.c4d_pos = bpy.props.FloatVectorProperty(name="Position", subtype='TRANSLATION', unit='LENGTH',
                                                get=get_pos, set=set_pos)
+    # Same getter/setter; unitless so Scale mode doesn't show "m".
+    WM.c4d_scale = bpy.props.FloatVectorProperty(name="Scale", subtype='XYZ', get=get_size, set=set_size)
     WM.c4d_size = bpy.props.FloatVectorProperty(name="Size", subtype='XYZ_LENGTH', unit='LENGTH',
                                                 get=get_size, set=set_size)
     WM.c4d_rot = bpy.props.FloatVectorProperty(name="Rotation", subtype='EULER', get=get_rot, set=set_rot)
@@ -218,5 +221,5 @@ def register():
 
 def unregister():
     WM = bpy.types.WindowManager
-    for p in ("c4d_rot", "c4d_size", "c4d_pos", "c4d_coord_size", "c4d_coord_space"):
+    for p in ("c4d_rot", "c4d_scale", "c4d_size", "c4d_pos", "c4d_coord_size", "c4d_coord_space"):
         delattr(WM, p)
