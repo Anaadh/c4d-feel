@@ -16,6 +16,7 @@ import math
 import bpy
 
 PREFIX = "C4D "
+VERSION = {"Extrude": 2, "Sweep": 3}  # bump when a node tree changes
 
 SPLINE_SPECS = {
     "Circle": [("Radius", 'NodeSocketFloat', 1.0, 0.0, 'DISTANCE'),
@@ -30,6 +31,9 @@ SPLINE_SPECS = {
             ("Start Angle", 'NodeSocketFloat', 0.0, None, 'ANGLE'),
             ("End Angle", 'NodeSocketFloat', math.radians(90), None, 'ANGLE'),
             ("Points", 'NodeSocketInt', 16, 2, None)],
+    "Text": [("Text", 'NodeSocketString', "Text", None, None),
+             ("Height", 'NodeSocketFloat', 1.0, 0.0, 'DISTANCE'),
+             ("Spacing", 'NodeSocketFloat', 1.0, 0.0, None)],
     "Helix": [("Start Radius", 'NodeSocketFloat', 1.0, 0.0, 'DISTANCE'),
               ("End Radius", 'NodeSocketFloat', 1.0, 0.0, 'DISTANCE'),
               ("Turns", 'NodeSocketFloat', 2.0, 0.0, None),
@@ -40,19 +44,23 @@ SPLINE_SPECS = {
 GEN_SPECS = {
     "Extrude": [("Spline", 'NodeSocketObject', None, None, None),
                 ("Movement", 'NodeSocketVector', (0.0, 0.0, 0.2), None, 'TRANSLATION'),
-                ("Caps", 'NodeSocketBool', True, None, None)],
+                ("Caps", 'NodeSocketBool', True, None, None),
+                ("Subdivision", 'NodeSocketInt', 1, 1, None)],
     "Lathe": [("Spline", 'NodeSocketObject', None, None, None),
               ("Angle", 'NodeSocketFloat', math.radians(360), None, 'ANGLE'),
               ("Subdivision", 'NodeSocketInt', 24, 3, None),
               ("Profile Points", 'NodeSocketInt', 24, 2, None)],
     "Sweep": [("Profile", 'NodeSocketObject', None, None, None),
               ("Path", 'NodeSocketObject', None, None, None),
-              ("Caps", 'NodeSocketBool', True, None, None)],
+              ("Caps", 'NodeSocketBool', True, None, None),
+              ("Start Scale", 'NodeSocketFloat', 1.0, 0.0, 'FACTOR'),
+              ("End Scale", 'NodeSocketFloat', 1.0, 0.0, 'FACTOR'),
+              ("Rotation", 'NodeSocketFloat', 0.0, None, 'ANGLE')],
     "Loft": [("Splines", 'NodeSocketCollection', None, None, None),
              ("Mesh Subdivision U", 'NodeSocketInt', 32, 2, None)],
 }
 
-SPLINE_ICONS = {"Circle": 'MESH_CIRCLE', "Rectangle": 'MESH_PLANE', "Star": 'SOLO_OFF',
+SPLINE_ICONS = {"Text": 'OUTLINER_OB_FONT', "Circle": 'MESH_CIRCLE', "Rectangle": 'MESH_PLANE', "Star": 'SOLO_OFF',
                 "Arc": 'SPHERECURVE', "Helix": 'FORCE_VORTEX'}
 GEN_ICONS = {"Extrude": 'MOD_SOLIDIFY', "Lathe": 'MOD_SCREW', "Sweep": 'CURVE_PATH', "Loft": 'MOD_SKIN'}
 
@@ -149,6 +157,14 @@ def _build_spline(name, b):
         b.link(b.i("Start Angle"), n.inputs["Start Angle"])
         b.link(b.math('SUBTRACT', b.i("End Angle"), b.i("Start Angle")), n.inputs["Sweep Angle"])
         return n.outputs["Curve"]
+    if name == "Text":
+        n = b.node('GeometryNodeStringToCurves')
+        b.link(b.i("Text"), n.inputs["String"])
+        b.link(b.i("Height"), n.inputs["Size"])
+        b.link(b.i("Spacing"), n.inputs["Character Spacing"])
+        real = b.node('GeometryNodeRealizeInstances')
+        b.link(n.outputs["Curve Instances"], real.inputs[0])
+        return real.outputs[0]
     if name == "Helix":
         n = b.node('GeometryNodeCurveSpiral')
         b.link(b.i("Start Radius"), n.inputs["Start Radius"])
@@ -165,28 +181,94 @@ def _build_generator(name, b):
         curve = _object_curve(b, "Spline")
         edges = b.node('GeometryNodeCurveToMesh')
         b.link(curve, edges.inputs["Curve"])
+        step = b.node('ShaderNodeVectorMath', operation='DIVIDE')
+        b.link(b.i("Movement"), step.inputs[0])
+        b.link(b.i("Subdivision"), step.inputs[1])
+
+        # Extrude the top edges once per subdivision step.
+        rin = b.node('GeometryNodeRepeatInput')
+        rout = b.node('GeometryNodeRepeatOutput')
+        rin.pair_with_output(rout)
+        b.link(b.i("Subdivision"), rin.inputs["Iterations"])
+        mark = b.node('GeometryNodeStoreNamedAttribute', data_type='BOOLEAN', domain='EDGE')
+        mark.inputs["Name"].default_value = "c4d_top"
+        mark.inputs["Value"].default_value = True
+        b.link(edges.outputs["Mesh"], mark.inputs["Geometry"])
+        b.link(mark.outputs[0], rin.inputs["Geometry"])
+        top = b.node('GeometryNodeInputNamedAttribute', data_type='BOOLEAN')
+        top.inputs["Name"].default_value = "c4d_top"
         ext = b.node('GeometryNodeExtrudeMesh', mode='EDGES')
-        b.link(edges.outputs["Mesh"], ext.inputs["Mesh"])
-        b.link(b.i("Movement"), ext.inputs["Offset"])
+        b.link(rin.outputs["Geometry"], ext.inputs["Mesh"])
+        b.link(top.outputs[0], ext.inputs["Selection"])
+        b.link(step.outputs[0], ext.inputs["Offset"])
+        remark = b.node('GeometryNodeStoreNamedAttribute', data_type='BOOLEAN', domain='EDGE')
+        remark.inputs["Name"].default_value = "c4d_top"
+        b.link(ext.outputs["Mesh"], remark.inputs["Geometry"])
+        b.link(ext.outputs["Top"], remark.inputs["Value"])
+        b.link(remark.outputs[0], rout.inputs["Geometry"])
+        sides = rout.outputs["Geometry"]
+
         fill = b.node('GeometryNodeFillCurve')
         b.link(curve, fill.inputs["Curve"])
-        top = b.node('GeometryNodeTransform')
-        b.link(fill.outputs["Mesh"], top.inputs["Geometry"])
-        b.link(b.i("Movement"), top.inputs["Translation"])
+        cap_top = b.node('GeometryNodeTransform')
+        b.link(fill.outputs["Mesh"], cap_top.inputs["Geometry"])
+        b.link(b.i("Movement"), cap_top.inputs["Translation"])
         flip = b.node('GeometryNodeFlipFaces')
         b.link(fill.outputs["Mesh"], flip.inputs["Mesh"])
         caps = b.node('GeometryNodeJoinGeometry')
-        b.link(top.outputs["Geometry"], caps.inputs[0])
+        b.link(cap_top.outputs["Geometry"], caps.inputs[0])
         b.link(flip.outputs["Mesh"], caps.inputs[0])
         sw = b.node('GeometryNodeSwitch', input_type='GEOMETRY')
         b.link(b.i("Caps"), sw.inputs["Switch"])
         b.link(caps.outputs[0], sw.inputs["True"])
         join = b.node('GeometryNodeJoinGeometry')
-        b.link(ext.outputs["Mesh"], join.inputs[0])
+        b.link(sides, join.inputs[0])
         b.link(sw.outputs[0], join.inputs[0])
         merge = b.node('GeometryNodeMergeByDistance')
         b.link(join.outputs[0], merge.inputs["Geometry"])
-        return merge.outputs["Geometry"]
+
+        # Cap rims get bevel weight 1 so the "Cap Fillet" bevel rounds only them.
+        # d = position . direction; rim edge = both ends at the lowest or highest d.
+        norm = b.node('ShaderNodeVectorMath', operation='NORMALIZE')
+        b.link(b.i("Movement"), norm.inputs[0])
+        ev = b.node('GeometryNodeInputMeshEdgeVertices')
+
+        def dot(pos_sock):
+            d = b.node('ShaderNodeVectorMath', operation='DOT_PRODUCT')
+            b.link(pos_sock, d.inputs[0])
+            b.link(norm.outputs[0], d.inputs[1])
+            return d.outputs["Value"]
+        d1, d2 = dot(ev.outputs["Position 1"]), dot(ev.outputs["Position 2"])
+        ppos = b.node('GeometryNodeInputPosition')
+        stat = b.node('GeometryNodeAttributeStatistic', data_type='FLOAT', domain='POINT')
+        b.link(merge.outputs["Geometry"], stat.inputs["Geometry"])
+        b.link(dot(ppos.outputs[0]), stat.inputs["Attribute"])
+
+        def near(a, target):
+            c = b.node('FunctionNodeCompare', data_type='FLOAT', operation='EQUAL')
+            c.inputs["Epsilon"].default_value = 1e-4
+            b.link(a, c.inputs["A"])
+            b.link(target, c.inputs["B"])
+            return c.outputs["Result"]
+
+        def both(x, y):
+            n = b.node('FunctionNodeBooleanMath', operation='AND')
+            b.link(x, n.inputs[0])
+            b.link(y, n.inputs[1])
+            return n.outputs[0]
+        lo = both(near(d1, stat.outputs["Min"]), near(d2, stat.outputs["Min"]))
+        hi = both(near(d1, stat.outputs["Max"]), near(d2, stat.outputs["Max"]))
+        rim = b.node('FunctionNodeBooleanMath', operation='OR')
+        b.link(lo, rim.inputs[0])
+        b.link(hi, rim.inputs[1])
+        bw = b.node('GeometryNodeStoreNamedAttribute', data_type='FLOAT', domain='EDGE')
+        bw.inputs["Name"].default_value = "bevel_weight_edge"
+        b.link(merge.outputs["Geometry"], bw.inputs["Geometry"])
+        b.link(rim.outputs[0], bw.inputs["Value"])
+        clean = b.node('GeometryNodeRemoveAttribute')
+        clean.inputs["Name"].default_value = "c4d_top"
+        b.link(bw.outputs[0], clean.inputs["Geometry"])
+        return clean.outputs["Geometry"]
 
     if name == "Lathe":
         curve = _object_curve(b, "Spline")
@@ -206,8 +288,20 @@ def _build_generator(name, b):
         return merge.outputs["Geometry"]
 
     if name == "Sweep":
+        param = b.node('GeometryNodeSplineParameter')
+        radius = b.node('ShaderNodeMix', data_type='FLOAT')
+        b.link(param.outputs["Factor"], radius.inputs["Factor"])
+        b.link(b.i("Start Scale"), radius.inputs["A"])
+        b.link(b.i("End Scale"), radius.inputs["B"])
+        set_r = b.node('GeometryNodeSetCurveRadius')
+        b.link(_object_curve(b, "Path"), set_r.inputs["Curve"])
+        b.link(radius.outputs["Result"], set_r.inputs["Radius"])
+        set_t = b.node('GeometryNodeSetCurveTilt')
+        b.link(set_r.outputs[0], set_t.inputs["Curve"])
+        b.link(b.math('MULTIPLY', param.outputs["Factor"], b.i("Rotation")), set_t.inputs["Tilt"])
         c2m = b.node('GeometryNodeCurveToMesh')
-        b.link(_object_curve(b, "Path"), c2m.inputs["Curve"])
+        b.link(set_t.outputs[0], c2m.inputs["Curve"])
+        b.link(radius.outputs["Result"], c2m.inputs["Scale"])  # 5.x: scale is an input
         b.link(_object_curve(b, "Profile"), c2m.inputs["Profile Curve"])
         b.link(b.i("Caps"), c2m.inputs["Fill Caps"])
         return c2m.outputs["Mesh"]
@@ -240,10 +334,14 @@ def _build_generator(name, b):
 
 def build_group(name):
     gname = PREFIX + name
-    ng = bpy.data.node_groups.get(gname)
-    if ng is not None:
-        return ng
+    want = VERSION.get(name, 1)
+    old = bpy.data.node_groups.get(gname)
+    if old is not None and old.get("c4d_version", 1) >= want:
+        return old
+    if old is not None:
+        old.name = gname + " (old)"
     ng = bpy.data.node_groups.new(gname, 'GeometryNodeTree')
+    ng["c4d_version"] = want
     if name in SPLINE_SPECS:
         b = _B(ng, SPLINE_SPECS[name])
         b.finish(_build_spline(name, b))
@@ -254,6 +352,11 @@ def build_group(name):
         smooth.inputs["Shade Smooth"].default_value = name != "Extrude"
         b.link(geo, smooth.inputs["Geometry"])
         b.finish(smooth.outputs["Geometry"])
+    if old is not None:
+        # Existing objects switch to the new tree; new sockets are appended,
+        # so their identifiers (and saved values) still match.
+        old.user_remap(ng)
+        bpy.data.node_groups.remove(old)
     return ng
 
 
@@ -380,6 +483,15 @@ class C4D_OT_add_spline_generator(bpy.types.Operator):
                 coll.objects.link(o)
             children = splines
             set_input(mod, "Splines", coll)
+
+        if self.kind == "Extrude":
+            # C4D Cap Fillet: bevel limited to the cap-rim edges the tree weights.
+            bev = gen.modifiers.new("Cap Fillet", 'BEVEL')
+            bev.limit_method = 'WEIGHT'
+            bev.width = 0.03
+            bev.segments = 4
+            bev.harden_normals = False
+            bev.show_viewport = bev.show_render = False
 
         context.view_layer.update()  # new objects' matrix_world is stale until updated
         for c in children:

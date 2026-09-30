@@ -494,13 +494,14 @@ def _draw_object(col, context, ob):
             col.prop(data, "shadow_soft_size", text="Radius")
     elif ob.type == 'MESH':
         from .primitives import primitive_name, draw_attributes, PREFIX
-        if primitive_name(ob):
+        from .splines import kind_of
+        if primitive_name(ob) or kind_of(ob):
             draw_attributes(col, ob)
             col.separator()
             col.operator("c4d.make_editable", text="Make Editable (C)", icon='MESH_DATA')
             extra = [m for m in ob.modifiers
                      if not (m.type == 'NODES' and m.node_group and m.node_group.name.startswith(PREFIX))
-                     and not (m.type == 'BEVEL' and m.name.startswith("Fillet"))]
+                     and not (m.type == 'BEVEL' and "Fillet" in m.name)]
             _draw_modifier_boxes(col, extra)
             return
         me = data
@@ -571,6 +572,18 @@ LOWER_TABS = (
 )
 
 
+def native_object_manager():
+    """True on the C4D Blender fork, whose Outliner draws C4D columns natively."""
+    return "use_c4d_style" in bpy.types.SpaceOutliner.bl_rna.properties
+
+
+def _upper_tabs():
+    if native_object_manager():
+        # Objects = native C4D Outliner (keeps drag & drop); Outliner = stock.
+        return (('OBJECTS', "Objects", 'OUTLINER'),) + UPPER_TABS[1:]
+    return UPPER_TABS
+
+
 def _column_slot(context):
     """'UPPER' / 'LOWER' for areas in the right column, else None."""
     area, window = context.area, context.window
@@ -584,6 +597,8 @@ def _column_slot(context):
 def _current_tab(context, slot):
     area = context.area
     if slot == 'UPPER':
+        if area.ui_type == 'OUTLINER' and getattr(area.spaces.active, "use_c4d_style", False):
+            return 'OBJECTS'
         return {'PROPERTIES': 'OBJECTS', 'OUTLINER': 'OUTLINER', 'ASSETS': 'CONTENT',
                 'SPREADSHEET': 'STRUCTURE'}.get(area.ui_type)
     return {'PROPERTIES': 'ATTRIBUTES', 'OUTLINER': 'LAYERS'}.get(area.ui_type)
@@ -597,7 +612,7 @@ def draw_manager_tabs(layout, context):
         return
     current = _current_tab(context, slot)
     row = layout.row(align=True)
-    for key, label, _ui in (UPPER_TABS if slot == 'UPPER' else LOWER_TABS):
+    for key, label, _ui in (_upper_tabs() if slot == 'UPPER' else LOWER_TABS):
         row.operator("c4d.manager_tab", text=label, depress=(key == current)).tab = key
     layout.separator()
 
@@ -608,6 +623,8 @@ def configure_object_manager(sp):
     sp.use_filter_collection = False
     sp.use_filter_object = True
     sp.use_filter_children = True
+    if hasattr(sp, "use_c4d_style"):
+        sp.use_c4d_style = False
     sp.use_filter_object_content = True   # modifiers / constraints = "tags"
     for prop, on in (("show_restrict_column_hide", True),      # editor dot
                      ("show_restrict_column_render", True),    # render dot
@@ -618,9 +635,21 @@ def configure_object_manager(sp):
             setattr(sp, prop, on)
 
 
+def configure_native_object_manager(sp):
+    """Fork only: Outliner with native C4D columns; tags drawn as icons, not children."""
+    sp.display_mode = 'VIEW_LAYER'
+    sp.use_filter_collection = False
+    sp.use_filter_object = True
+    sp.use_filter_children = True
+    sp.use_filter_object_content = False
+    sp.use_c4d_style = True
+
+
 def _configure_tab(window, area, tab):
     sp = area.spaces.active
-    if tab == 'OBJECTS':
+    if tab == 'OBJECTS' and area.type == 'OUTLINER':
+        configure_native_object_manager(sp)
+    elif tab == 'OBJECTS':
         from .om import configure_space
         configure_space(sp)
     elif tab == 'OUTLINER':
@@ -649,6 +678,8 @@ class C4D_OT_manager_tab(bpy.types.Operator):
     def execute(self, context):
         area, window = context.area, context.window
         ui = {k: u for k, _l, u in UPPER_TABS + LOWER_TABS}.get(self.tab)
+        if self.tab == 'OBJECTS' and native_object_manager():
+            ui = 'OUTLINER'
         if ui is None:
             return {'CANCELLED'}
         area.ui_type = ui

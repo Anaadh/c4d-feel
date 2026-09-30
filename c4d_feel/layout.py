@@ -64,7 +64,9 @@ def _steps(window):
     # 3. Object Manager on top of the Attribute Manager.
     om = _split(window, right, 'HORIZONTAL', 1.0 - OBJECT_MANAGER)
     yield
-    om.type = 'PROPERTIES'  # C4D Object Manager (Outliner stays on its tab)
+    from .managers import native_object_manager
+    # C4D Object Manager: native Outliner mode on the fork, custom list otherwise.
+    om.type = 'OUTLINER' if native_object_manager() else 'PROPERTIES'
 
     # 4. Bottom strip under the viewport: Material Manager (Asset Browser) whose
     #    sidebar holds the Coordinate Manager.
@@ -89,9 +91,12 @@ def _steps(window):
 
 
 def _configure(window):
-    from .managers import configure_object_manager
+    from .managers import configure_object_manager, configure_native_object_manager, native_object_manager
     for area in _areas(window, 'OUTLINER'):
-        configure_object_manager(area.spaces.active)
+        if native_object_manager():
+            configure_native_object_manager(area.spaces.active)
+        else:
+            configure_object_manager(area.spaces.active)
     from .om import configure_space
     for area in _areas(window, 'PROPERTIES'):
         if area.y + area.height / 2 > window.height / 2:

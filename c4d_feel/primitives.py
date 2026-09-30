@@ -266,12 +266,14 @@ def draw_attributes(layout, ob):
     for m in ob.modifiers:
         if m.type == 'NODES' and m.node_group and m.node_group.name.startswith(PREFIX):
             draw_nodes_modifier(layout, m)
-        elif m.type == 'BEVEL' and m.name.startswith("Fillet"):
-            col = layout.column(heading="Fillet")
+        elif m.type == 'BEVEL' and "Fillet" in m.name:
+            col = layout.column(align=True)
+            col.use_property_split = False
             row = col.row(align=True)
-            row.prop(m, "show_viewport", text="Fillet (Editor)", toggle=True)
+            row.label(text=m.name)
+            row.prop(m, "show_viewport", text="Editor", toggle=True)
             row.prop(m, "show_render", text="Render", toggle=True)
-            sub = col.column(align=True)
+            sub = layout.column(align=True)
             sub.active = m.show_viewport or m.show_render
             sub.prop(m, "width", text="Fillet Radius")
             sub.prop(m, "segments", text="Fillet Subdivision")
