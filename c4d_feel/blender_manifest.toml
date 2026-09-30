@@ -1,0 +1,20 @@
+schema_version = "1.0.0"
+
+id = "c4d_feel"
+version = "0.2.0"
+name = "C4D Feel"
+tagline = "Cinema 4D R24 style hotkeys, chords, pie menu, theme and layout"
+maintainer = "Mohamed Anaadh Hussain"
+type = "add-on"
+
+blender_version_min = "5.0.0"
+
+license = ["SPDX:GPL-3.0-or-later"]
+
+tags = ["User Interface", "3D View"]
+
+[build]
+paths_exclude_pattern = [
+  "__pycache__/",
+  "*.pyc",
+]
