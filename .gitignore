@@ -3,3 +3,4 @@ __pycache__/
 dist/
 *.stackdump
 *.blend1
+c4d_test_scene.blend
