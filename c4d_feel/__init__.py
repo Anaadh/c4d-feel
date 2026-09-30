@@ -1,5 +1,17 @@
 """C4D Feel: Cinema 4D R24 style hotkeys, chords, V pie, theme and layout for Blender."""
 
+# Used when bundled as a core add-on in the C4D Blender fork
+# (as an extension, blender_manifest.toml is used instead).
+bl_info = {
+    "name": "C4D Feel",
+    "author": "Mohamed Anaadh Hussain",
+    "version": (0, 3, 0),
+    "blender": (5, 0, 0),
+    "location": "C4D workspace",
+    "description": "Cinema 4D R24 style hotkeys, managers, generators and layout",
+    "category": "Interface",
+}
+
 import bpy
 
 from . import icons, coord, ops, chords, menus, menubar, cloner, deformers, primitives, splines, om, matmanager, theme, layout, ui, managers, keymap
