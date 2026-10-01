@@ -374,7 +374,13 @@ def run():
             assert space.shading.type == 'RENDERED' and space.use_render_border
             ops.interactive_render()
             assert space.shading.type == before and not space.use_render_border
-        ops.render_settings()
+        wm = bpy.context.window_manager
+        n = len(wm.windows)
+        with view3d_override():
+            assert ops.render_settings() == {'FINISHED'}
+        assert len(wm.windows) == n + 1, "render settings window did not open"
+        with bpy.context.temp_override(window=wm.windows[-1]):
+            bpy.ops.wm.window_close()
 
     @check("menus draw without errors")
     def _():

@@ -129,24 +129,38 @@ class C4D_OT_set_workspace(bpy.types.Operator):
         return {'FINISHED'}
 
 
+def _is_render_settings_window(win, main):
+    return win != main and any(
+        a.type == 'PROPERTIES' and getattr(a.spaces.active, "context", "") in {'RENDER', 'OUTPUT'}
+        for a in win.screen.areas) and len(win.screen.areas) == 1
+
+
 class C4D_OT_render_settings(bpy.types.Operator):
-    """Show render settings in the Attribute Manager (C4D Ctrl+B)"""
+    """Open the Render Settings window (C4D Edit Render Settings)"""
     bl_idname = "c4d.render_settings"
     bl_label = "Edit Render Settings"
     bl_options = {'INTERNAL'}
 
     def execute(self, context):
-        screen = context.screen or context.window_manager.windows[0].screen
-        props = [a for a in screen.areas if a.type == 'PROPERTIES']
-        # Prefer the Attribute Manager (lower right) over the Object Manager slot.
-        props.sort(key=lambda a: a.y)
-        for area in props:
-            try:
-                area.spaces.active.context = 'RENDER'
-                return {'FINISHED'}
-            except TypeError:
-                continue
-        bpy.ops.screen.userpref_show()
+        from .winplace import open_floating_window
+        wm = context.window_manager
+        main = wm.windows[0]
+        if any(_is_render_settings_window(w, main) for w in wm.windows):
+            return {'FINISHED'}  # already open
+
+        def configure(window):
+            area = window.screen.areas[0]
+            area.type = 'PROPERTIES'
+            space = area.spaces.active
+            # Render + Output tabs, like C4D's Render Settings (Output, Save, ...).
+            for prop in space.bl_rna.properties.keys():
+                if prop.startswith("show_properties_"):
+                    setattr(space, prop, prop in {"show_properties_render", "show_properties_output",
+                                                  "show_properties_view_layer"})
+            space.context = 'RENDER'
+
+        if open_floating_window(context, configure, 0.42, 0.75) is None:
+            return {'CANCELLED'}
         return {'FINISHED'}
 
 

@@ -38,6 +38,34 @@ def blender_windows():
     return found
 
 
+def open_floating_window(context, configure, width_frac=0.7, height_frac=0.75):
+    """Open a new independent window (copy of an area), centered on screen,
+    then call configure(window) to set its editor. Returns the window or None."""
+    import bpy
+    window = context.window or context.window_manager.windows[0]
+    area = context.area if context.area and context.window else None
+    if area is None:
+        area = max(window.screen.areas, key=lambda a: a.width * a.height)
+    before = set(context.window_manager.windows[:])
+    os_before = blender_windows()
+    with context.temp_override(window=window, screen=window.screen, area=area):
+        bpy.ops.screen.area_dupli('INVOKE_DEFAULT')
+    new = [w for w in context.window_manager.windows if w not in before]
+    if not new:
+        return None
+    new_window = new[0]
+
+    def later():
+        try:
+            center_new_window(os_before, width_frac, height_frac)
+            configure(new_window)
+        except (ReferenceError, AttributeError, RuntimeError, OSError):
+            pass
+        return None
+    bpy.app.timers.register(later, first_interval=0.05)
+    return new_window
+
+
 def center_new_window(before, width_frac=0.7, height_frac=0.75):
     """Center the window that appeared since `before` on the main window's monitor.
 
