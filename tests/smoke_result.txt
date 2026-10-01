@@ -15,9 +15,10 @@ PASS  cloner: linear / radial / grid + plain effector
 PASS  generators / deformers menu: every modifier kind adds
 PASS  deformer objects: child drives parent, re-parenting moves the effect
 PASS  tags: add every C4D tag, custom tags stored, remove + copy
+PASS  camera: look through + navigation moves camera, toggle back
 PASS  generator on/off toggle (Q)
 PASS  object manager: select / visibility / generators / tag
 PASS  material manager: new / apply / duplicate / remove unused
 PASS  render settings / interactive render toggles
 PASS  menus draw without errors
-22/22 passed
+23/23 passed

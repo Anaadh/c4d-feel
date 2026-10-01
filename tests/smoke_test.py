@@ -297,6 +297,19 @@ def run():
         assert bpy.context.window_manager.c4d_active_tag == 'DISPLAY'
         bpy.context.window_manager.c4d_active_tag = ""
 
+    @check("camera: look through + navigation moves camera, toggle back")
+    def _():
+        with view3d_override():
+            bpy.ops.object.camera_add(location=(0, -8, 2))
+            cam = track(bpy.context.active_object)
+            space = bpy.context.space_data
+            r3d = space.region_3d
+            ops.look_through(name=cam.name)
+            assert r3d.view_perspective == 'CAMERA' and bpy.context.scene.camera == cam
+            assert space.lock_camera, "camera navigation not locked"
+            ops.look_through(name=cam.name)
+            assert r3d.view_perspective != 'CAMERA' and not space.lock_camera
+
     @check("generator on/off toggle (Q)")
     def _():
         with view3d_override():

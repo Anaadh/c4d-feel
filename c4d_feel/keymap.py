@@ -87,6 +87,8 @@ def register():
     b(OBJ, "c4d.ungroup", 'G', shift=True)
     b(VIEW, "c4d.toggle_generators", 'Q')
     b(VIEW, "c4d.edit_toggle", 'RET')
+    # Numpad 0: look through the scene camera, navigation reframes it (toggle).
+    b(VIEW, "c4d.look_through", 'NUMPAD_0')
     b(VIEW, "wm.call_menu_pie", 'V', props={"name": "C4D_MT_v_pie"})
 
     # --- Modeling chords -------------------------------------------------

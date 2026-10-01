@@ -49,15 +49,18 @@ class C4D_MT_vp_cameras(bpy.types.Menu):
     bl_label = "Cameras"
 
     def draw(self, context):
+        from .camera import looking_through
         l = self.layout
-        l.operator("view3d.view_camera", text="Use Scene Camera", icon='CAMERA_DATA')
+        l.operator("c4d.editor_camera", text="Editor Camera", icon='VIEW_PERSPECTIVE')
         cams = [o for o in context.scene.objects if o.type == 'CAMERA']
         if cams:
             col = l.column()
             for cam in cams:
-                op = col.operator("c4d.set_camera", text=cam.name,
-                                  icon='CHECKMARK' if context.scene.camera == cam else 'BLANK1')
+                on = looking_through(context, cam)
+                op = col.operator("c4d.look_through", text=cam.name,
+                                  icon='VIEW_CAMERA' if on else 'VIEW_CAMERA_UNSELECTED')
                 op.name = cam.name
+        l.prop(context.window_manager, "c4d_camera_nav", text="Navigate Moves Camera")
         l.operator("view3d.camera_to_view", text="Align Camera to View")
         l.separator()
         l.operator("c4d.view_panel", text="Perspective").view = 'PERSP'
@@ -149,13 +152,11 @@ class C4D_OT_set_camera(bpy.types.Operator):
     name: bpy.props.StringProperty()
 
     def execute(self, context):
+        from .camera import enter_camera
         cam = context.scene.objects.get(self.name)
         if cam is None:
             return {'CANCELLED'}
-        context.scene.camera = cam
-        r3d = context.space_data.region_3d if context.space_data.type == 'VIEW_3D' else None
-        if r3d and r3d.view_perspective != 'CAMERA':
-            bpy.ops.view3d.view_camera()
+        enter_camera(context, cam)
         return {'FINISHED'}
 
 

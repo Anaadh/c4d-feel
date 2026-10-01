@@ -137,6 +137,11 @@ class C4D_UL_objects(bpy.types.UIList):
 
         # Tags
         tags = right.row(align=True)
+        if ob.type == 'CAMERA':
+            from .camera import looking_through
+            on = looking_through(context, ob)
+            tags.operator("c4d.look_through", text="", emboss=False,
+                          icon='VIEW_CAMERA' if on else 'VIEW_CAMERA_UNSELECTED').name = ob.name
         for i, m in enumerate(ob.modifiers):
             t = tags.operator("c4d.om_tag", text="", emboss=False, icon=_modifier_icon(m))
             t.name, t.kind, t.index = ob.name, 'MODIFIER', i
