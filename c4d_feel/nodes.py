@@ -79,7 +79,9 @@ class C4D_OT_edit_material_nodes(bpy.types.Operator):
         area = context.area
         if area is None:
             area = max(context.window.screen.areas, key=lambda a: a.width * a.height)
+        from .winplace import blender_windows, center_new_window
         before = set(context.window_manager.windows[:])
+        os_before = blender_windows()
         with context.temp_override(window=context.window, screen=context.window.screen, area=area):
             bpy.ops.screen.area_dupli('INVOKE_DEFAULT')
         new = [w for w in context.window_manager.windows if w not in before]
@@ -89,8 +91,11 @@ class C4D_OT_edit_material_nodes(bpy.types.Operator):
 
         def later():
             try:
+                # Independent window in the middle of the screen, not where the
+                # Material Manager strip happens to be.
+                center_new_window(os_before)
                 _configure_node_window(window, mat)
-            except (ReferenceError, AttributeError, RuntimeError):
+            except (ReferenceError, AttributeError, RuntimeError, OSError):
                 pass
             return None
         bpy.app.timers.register(later, first_interval=0.05)
