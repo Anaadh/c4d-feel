@@ -354,8 +354,12 @@ def run():
     @check("render settings / interactive render toggles")
     def _():
         with view3d_override():
+            space = bpy.context.space_data
+            before = space.shading.type
             ops.interactive_render()
+            assert space.shading.type == 'RENDERED' and space.use_render_border
             ops.interactive_render()
+            assert space.shading.type == before and not space.use_render_border
         ops.render_settings()
 
     @check("menus draw without errors")

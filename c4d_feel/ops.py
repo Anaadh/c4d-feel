@@ -237,19 +237,40 @@ class C4D_OT_display_mode(bpy.types.Operator):
         return {'FINISHED'}
 
 
+_prev_shading = {}  # viewport -> shading type before Alt+R (spaces can't hold custom props)
+
+
 class C4D_OT_interactive_render(bpy.types.Operator):
-    """Toggle rendered viewport shading (stand-in for C4D Alt+R)"""
+    """Interactive Render Region (C4D Alt+R): rendered viewport limited to a
+    box in the view; Ctrl+B redraws the box, Alt+R again closes it"""
     bl_idname = "c4d.interactive_render"
-    bl_label = "Interactive Render"
+    bl_label = "Interactive Render Region"
     bl_options = {'INTERNAL'}
+
+    full_view: bpy.props.BoolProperty(name="Full View", default=False,
+                                      description="Render the whole viewport instead of a region")
 
     @classmethod
     def poll(cls, context):
         return context.area and context.area.type == 'VIEW_3D'
 
     def execute(self, context):
-        sh = context.space_data.shading
-        sh.type = 'SOLID' if sh.type == 'RENDERED' else 'RENDERED'
+        space = context.space_data
+        sh = space.shading
+        if sh.type == 'RENDERED':
+            sh.type = _prev_shading.pop(space.as_pointer(), 'SOLID')
+            space.use_render_border = False
+            return {'FINISHED'}
+        _prev_shading[space.as_pointer()] = sh.type
+        sh.type = 'RENDERED'
+        if self.full_view:
+            space.use_render_border = False
+            return {'FINISHED'}
+        # Default region: centred box, like C4D's IRR frame (keep a user-drawn one).
+        if (space.render_border_max_x - space.render_border_min_x) >= 0.999:
+            space.render_border_min_x, space.render_border_max_x = 0.25, 0.75
+            space.render_border_min_y, space.render_border_max_y = 0.25, 0.75
+        space.use_render_border = True
         return {'FINISHED'}
 
 
