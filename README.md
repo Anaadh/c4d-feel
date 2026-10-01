@@ -4,6 +4,8 @@ I've used Cinema 4D for years and wanted Blender to feel like home. This add-on 
 
 It runs on regular Blender 5.2. If you want the parts that need C++ changes (a real Object Manager with dots and tags, the big command palette), have a look at the fork: [Anaadh/blender4d](https://github.com/Anaadh/blender4d).
 
+![C4D Feel in Blender 5.2](docs/screenshot.jpg)
+
 Not affiliated with Maxon or the Blender Foundation. Cinema 4D is a trademark of Maxon.
 
 ## Install
