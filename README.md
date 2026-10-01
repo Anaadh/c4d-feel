@@ -2,7 +2,7 @@
 
 I've used Cinema 4D for years and wanted Blender to feel like home. This add-on makes Blender 5.2 work like C4D R24: the hotkeys, the managers, the menus, generators that work off their children, without taking anything away from Blender. Every Blender tool, menu and workspace is still there.
 
-It runs on regular Blender 5.2. If you want the parts that need C++ changes (a real Object Manager with dots and tags, the big command palette), have a look at the fork: [Anaadh/blender4d](https://github.com/Anaadh/blender4d).
+It runs on regular Blender 5.2. If you want the parts that need C++ changes (a real Object Manager with dots and tags, the big command palette), have a look at the fork: [Anaadh/blender4d](https://github.com/Anaadh/blender4d). There's a ready to run Windows build on its [releases page](https://github.com/Anaadh/blender4d/releases).
 
 ![C4D Feel in Blender 5.2](docs/screenshot.jpg)
 
