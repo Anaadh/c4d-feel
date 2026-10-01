@@ -236,6 +236,18 @@ def _topbar_left(self, context):
         layout.operator("screen.back_to_previous", icon='SCREEN_BACK', text="Back to Previous")
         return
 
+    if not palette_row_active(context):
+        draw_palette(layout, context)
+
+
+def palette_row_active(context):
+    """Fork only: the palette has its own tall top-bar row."""
+    screen = context.screen
+    return getattr(screen, "show_c4d_palette", False)
+
+
+def draw_palette(layout, context):
+    """C4D command palette (undo, tools, axis locks, render, object groups)."""
     from .icons import icon as ic
     layout.separator(type='LINE')
     row = layout.row(align=True)
@@ -275,6 +287,21 @@ def _topbar_left(self, context):
     row.menu("C4D_MT_environment", text="", icon_value=ic("floor"))
     row.operator("object.camera_add", text="", icon_value=ic("camera"))
     row.menu("VIEW3D_MT_light_add", text="", icon_value=ic("light"))
+
+
+class C4D_HT_palette(bpy.types.Header):
+    """Big C4D command palette in the fork's second top-bar row."""
+    bl_space_type = 'TOPBAR'
+    bl_region_type = 'WINDOW'
+
+    def draw(self, context):
+        from .managers import c4d_active
+        if not (c4d_active(context) and palette_row_active(context)):
+            return
+        layout = self.layout
+        layout.scale_y = 1.7
+        layout.scale_x = 1.7
+        draw_palette(layout, context)
 
 
 def _topbar_right(self, context):
@@ -361,6 +388,7 @@ classes = (
     C4D_MT_deformers,
     C4D_MT_environment,
     C4D_MT_layouts,
+    C4D_HT_palette,
     C4D_PT_coordinates,
     C4D_PT_coordinates_view3d,
 )

@@ -271,6 +271,32 @@ def run():
         bpy.context.view_layer.update()
         assert not any(m.name.startswith("C4D Bend") for m in b.modifiers), "stale modifier after delete"
 
+    @check("tags: add every C4D tag, custom tags stored, remove + copy")
+    def _():
+        from bl_ext.user_default.c4d_feel.tags import TAGS, custom_tags
+        with view3d_override():
+            bpy.ops.mesh.primitive_cube_add()
+            ob = track(bpy.context.active_object)
+            for key in TAGS:
+                select_only(ob)
+                assert ops.add_tag(key=key) == {'FINISHED'}, key
+        assert custom_tags(ob) == ['PROTECTION', 'DISPLAY', 'COMPOSITING'], custom_tags(ob)
+        assert all(ob.lock_location)
+        assert len(ob.constraints) == 3 and ob.material_slots
+        ops.remove_tag(name=ob.name, key='PROTECTION')
+        assert 'PROTECTION' not in custom_tags(ob) and not any(ob.lock_location)
+        with view3d_override():
+            bpy.ops.mesh.primitive_cube_add(location=(3, 0, 0))
+            other = track(bpy.context.active_object)
+            other.select_set(True)
+            ob.select_set(True)
+            bpy.context.view_layer.objects.active = ob
+            ops.copy_tags()
+        assert custom_tags(other) == ['DISPLAY', 'COMPOSITING']
+        ops.om_tag(name=ob.name, kind='CUSTOM', index=0)
+        assert bpy.context.window_manager.c4d_active_tag == 'DISPLAY'
+        bpy.context.window_manager.c4d_active_tag = ""
+
     @check("generator on/off toggle (Q)")
     def _():
         with view3d_override():

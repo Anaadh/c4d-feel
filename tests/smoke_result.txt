@@ -1,0 +1,23 @@
+PASS  primitives: all kinds build geometry
+PASS  make editable (C) turns a primitive into a mesh
+PASS  edit toggle refuses parametric objects, allows meshes
+PASS  component modes: points / edges / polygons / model
+PASS  mesh commands (M~ / U~ via menu) run in edit mode
+PASS  group (Alt+G) and ungroup (Shift+G)
+PASS  view panels F1-F5 and display modes
+PASS  coordinate toggle (W) and axis locks
+PASS  coordinate manager: object position / size / world
+PASS  coordinate manager: edit-mode selection move / size
+PASS  splines: all kinds build curves
+PASS  spline generators: Extrude / Lathe / Sweep / Loft build geometry
+PASS  spline generators: Extrude uses a user-drawn Blender curve
+PASS  cloner: linear / radial / grid + plain effector
+PASS  generators / deformers menu: every modifier kind adds
+PASS  deformer objects: child drives parent, re-parenting moves the effect
+PASS  tags: add every C4D tag, custom tags stored, remove + copy
+PASS  generator on/off toggle (Q)
+PASS  object manager: select / visibility / generators / tag
+PASS  material manager: new / apply / duplicate / remove unused
+PASS  render settings / interactive render toggles
+PASS  menus draw without errors
+22/22 passed

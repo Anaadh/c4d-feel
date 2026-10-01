@@ -91,6 +91,9 @@ def _steps(window):
 
 
 def _configure(window):
+    # Fork: give the C4D palette its own tall top-bar row.
+    if hasattr(window.screen, "show_c4d_palette"):
+        window.screen.show_c4d_palette = True
     from .managers import configure_object_manager, configure_native_object_manager, native_object_manager
     for area in _areas(window, 'OUTLINER'):
         if native_object_manager():

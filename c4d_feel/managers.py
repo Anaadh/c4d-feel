@@ -281,6 +281,8 @@ class C4D_MT_om_tags(bpy.types.Menu):
 
     def draw(self, context):
         l = self.layout
+        l.menu("C4D_MT_tags", text="C4D Tags", icon='BOOKMARKS')
+        l.separator()
         l.operator_menu_enum("object.modifier_add", "type", text="Generator / Deformer Tags")
         l.operator_menu_enum("object.constraint_add", "type", text="Constraint Tags")
         l.separator()
@@ -414,6 +416,13 @@ class C4D_PT_attributes(bpy.types.Panel):
         head = layout.row()
         head.label(text=f"{_type_label(ob)} Object [{ob.name}]", icon=_type_icon(ob))
 
+        from .tags import custom_tags, draw_tag_settings
+        if wm.c4d_active_tag and wm.c4d_active_tag in custom_tags(ob):
+            draw_tag_settings(layout, ob, wm.c4d_active_tag)
+            layout.separator()
+            op = layout.operator("wm.context_set_string", text="Back to Object", icon='BACK')
+            op.data_path, op.value = "window_manager.c4d_active_tag", ""
+            return
         row = layout.row(align=True)
         row.scale_y = 1.1
         row.prop(wm, "c4d_am_tab", expand=True)

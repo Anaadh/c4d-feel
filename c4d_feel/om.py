@@ -143,6 +143,10 @@ class C4D_UL_objects(bpy.types.UIList):
         for i, c in enumerate(ob.constraints):
             t = tags.operator("c4d.om_tag", text="", emboss=False, icon='CONSTRAINT')
             t.name, t.kind, t.index = ob.name, 'CONSTRAINT', i
+        from .tags import TAGS, custom_tags
+        for i, key in enumerate(custom_tags(ob)):
+            t = tags.operator("c4d.om_tag", text="", emboss=False, icon=TAGS[key][1])
+            t.name, t.kind, t.index = ob.name, 'CUSTOM', i
         for i, slot in enumerate(getattr(ob, "material_slots", ())):
             if slot.material is None:
                 continue
@@ -190,6 +194,7 @@ class C4D_OT_om_select(bpy.types.Operator):
             except RuntimeError:
                 pass  # hidden objects can still become active, like C4D
         vl.objects.active = ob
+        context.window_manager.c4d_active_tag = ""
         return {'FINISHED'}
 
 
@@ -257,7 +262,15 @@ class C4D_OT_om_tag(bpy.types.Operator):
             ob.modifiers.active = ob.modifiers[self.index]
         elif self.kind == 'MATERIAL':
             ob.active_material_index = self.index
-        ctx = {'MODIFIER': 'MODIFIER', 'CONSTRAINT': 'CONSTRAINT', 'MATERIAL': 'MATERIAL'}[self.kind]
+        wm = context.window_manager
+        wm.c4d_active_tag = ""
+        if self.kind == 'CUSTOM':
+            from .tags import custom_tags
+            tags = custom_tags(ob)
+            if self.index < len(tags):
+                wm.c4d_active_tag = tags[self.index]
+        ctx = {'MODIFIER': 'MODIFIER', 'CONSTRAINT': 'CONSTRAINT', 'MATERIAL': 'MATERIAL',
+               'CUSTOM': 'OBJECT'}[self.kind]
         for area in context.screen.areas:
             if area.type != 'PROPERTIES':
                 continue

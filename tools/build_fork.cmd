@@ -26,5 +26,7 @@ if not exist "%BUILD%\build.ninja" (
     -DWITH_CYCLES_DEVICE_HIPRT=OFF || exit /b 1
 )
 
-ninja -C "%BUILD%" -j %JOBS% install || exit /b 1
+rem -k 0: keep going past flaky compiler crashes, then retry once.
+ninja -C "%BUILD%" -j %JOBS% -k 0 install
+ninja -C "%BUILD%" -j 2 install || exit /b 1
 echo BUILD_OK
