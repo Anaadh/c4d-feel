@@ -136,10 +136,16 @@ class C4D_OT_render_settings(bpy.types.Operator):
     bl_options = {'INTERNAL'}
 
     def execute(self, context):
-        for area in context.screen.areas:
-            if area.type == 'PROPERTIES':
+        screen = context.screen or context.window_manager.windows[0].screen
+        props = [a for a in screen.areas if a.type == 'PROPERTIES']
+        # Prefer the Attribute Manager (lower right) over the Object Manager slot.
+        props.sort(key=lambda a: a.y)
+        for area in props:
+            try:
                 area.spaces.active.context = 'RENDER'
                 return {'FINISHED'}
+            except TypeError:
+                continue
         bpy.ops.screen.userpref_show()
         return {'FINISHED'}
 

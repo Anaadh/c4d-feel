@@ -351,6 +351,20 @@ def run():
         ops.remove_unused_materials()
         assert mat.name in bpy.data.materials  # used, so kept
 
+    @check("material nodes: opens a node editor window for the material")
+    def _():
+        mat = bpy.data.materials.new("SmokeNodes")
+        mat.use_nodes = True
+        wm = bpy.context.window_manager
+        before = len(wm.windows)
+        with view3d_override():
+            assert ops.edit_material_nodes(name=mat.name) == {'FINISHED'}
+        assert len(wm.windows) == before + 1, "no node window opened"
+        new = wm.windows[-1]
+        with bpy.context.temp_override(window=new):
+            bpy.ops.wm.window_close()
+        bpy.data.materials.remove(mat)
+
     @check("render settings / interactive render toggles")
     def _():
         with view3d_override():

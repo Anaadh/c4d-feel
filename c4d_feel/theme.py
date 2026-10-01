@@ -115,6 +115,32 @@ def apply(theme):
     _set(ol, "active_object", _hex(OBJ_ACTIVE))
     _set(ol, "row_alternate", _hex("#303134", 1.0))
 
+    # Node editor: Redshift Shader Graph look (dark bodies, muted colored headers)
+    ne = theme.node_editor
+    _set(ne.space, "back", _hex("#262626"))
+    _set(ne, "grid", _hex("#2e2e2e"))
+    _set(ne, "node_backdrop", _hex("#3a3a3a", 1.0))
+    _set(ne, "node_outline", _hex("#1c1c1c", 1.0))
+    _set(ne, "node_selected", _hex(OBJ_SELECTED))
+    _set(ne, "node_active", _hex(OBJ_ACTIVE))
+    _set(ne, "wire", _hex("#9a9a9a", 1.0))
+    _set(ne, "wire_inner", _hex("#5a5a5a"))
+    _set(ne, "wire_select", _hex(OBJ_ACTIVE))
+    for prop, color in (("shader_node", "#7a3f3f"),      # materials / shaders
+                        ("texture_node", "#8a6a2a"),     # textures
+                        ("converter_node", "#3e5f8a"),   # utilities / math
+                        ("color_node", "#6a4f8a"),
+                        ("vector_node", "#3f7373"),
+                        ("input_node", "#505050"),
+                        ("output_node", "#962d2d"),
+                        ("group_node", "#4a6a3a"),
+                        ("frame_node", "#303030"),
+                        ("attribute_node", "#3f6a5a"),
+                        ("geometry_node", "#3f6a5a"),
+                        ("script_node", "#555555")):
+        _set(ne, prop, _hex(color))
+    _set(ne, "noodle_curving", 5)
+
     # Viewport
     v = theme.view_3d
     grad = v.space.gradients

@@ -146,6 +146,7 @@ class C4D_MT_mm_material(bpy.types.Menu):
 
     def draw(self, context):
         l = self.layout
+        l.operator("c4d.edit_material_nodes", text="Edit Nodes (double-click)", icon='NODETREE')
         l.operator("c4d.apply_material")
         l.operator("c4d.edit_material", text="Edit (Attribute Manager)")
         l.operator("c4d.set_workspace", text="Material Editor (Shading)").name = "Shading"
